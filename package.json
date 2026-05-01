@@ -45,6 +45,7 @@
     "zod": "^4.1.8"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^0.6.0",
     "@changesets/cli": "^2.31.0",
     "@opencode-ai/plugin": "^1.14.30",
     "@opencode-ai/sdk": "^1.14.30",
