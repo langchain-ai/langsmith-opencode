@@ -1,0 +1,45 @@
+{
+  "name": "@langchain/langsmith-opencode",
+  "version": "0.0.1",
+  "description": "OpenCode plugin for tracing to LangSmith",
+  "keywords": [
+    "langsmith",
+    "opencode"
+  ],
+  "homepage": "https://github.com/langchain-ai/langsmith-opencode#readme",
+  "bugs": {
+    "url": "https://github.com/langchain-ai/langsmith-opencode/issues"
+  },
+  "license": "MIT",
+  "author": "LangChain",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "format": "oxfmt",
+    "prepublish": "pnpm run build"
+  },
+  "dependencies": {
+    "langsmith": "^0.6.0",
+    "zod": "^4.1.8"
+  },
+  "devDependencies": {
+    "@opencode-ai/plugin": "^1.14.30",
+    "@opencode-ai/sdk": "^1.14.30",
+    "@types/node": "^25.6.0",
+    "memfs": "^4.57.2",
+    "oxfmt": "^0.47.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
+  }
+}
