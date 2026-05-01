@@ -35,6 +35,7 @@
     "build": "tsc",
     "test": "vitest",
     "format": "oxfmt",
+    "lint": "oxfmt --check && tsc --noEmit",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "pnpm run build && changeset publish",
