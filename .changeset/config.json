@@ -3,7 +3,7 @@
   "changelog": [
     "@changesets/changelog-github",
     {
-      "repo": "langchain-ai/langgraphjs"
+      "repo": "langchain-ai/langsmith-opencode"
     }
   ],
   "commit": false,
