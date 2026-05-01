@@ -18,14 +18,14 @@ export const LangSmithPlugin: Plugin = async (ctx) => {
   }
 
   return {
-    "experimental.chat.system.transform": async (input: any, output: any) => {
+    "experimental.chat.system.transform": async (input, output) => {
       const sessionID = input.sessionID;
       if (!sessionID) return;
 
       await tracer.handleSessionLoad(sessionID, getSessionHistory);
       await tracer.handleSystem(input, output);
     },
-    event: async (input: any) => {
+    event: async (input) => {
       const sessionID =
         "sessionID" in input.event.properties &&
         typeof input.event.properties.sessionID === "string"
@@ -36,6 +36,11 @@ export const LangSmithPlugin: Plugin = async (ctx) => {
 
       await tracer.handleSessionLoad(sessionID, getSessionHistory);
       await tracer.handleEvent(input);
+
+      // Flush the tracer when the session is idle
+      if (input.event.type === "session.idle") {
+        await tracer.flush();
+      }
     },
   };
 };
