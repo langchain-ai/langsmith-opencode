@@ -17,6 +17,109 @@ async function loadJSONL(fileName: string) {
   return lines;
 }
 
+it("uses receivedAt event timestamps for run end times", async () => {
+  const { client, callSpy } = mockClient();
+  const tracer = new OpenCodeSessionTracer(
+    { enabled: true },
+    { client, name: "opencode.session.time" },
+  );
+  const sessionID = "ses_time_received";
+  const userMessageID = "msg_user";
+  const assistantMessageID = "msg_assistant";
+  const userCreated = 1_000;
+  const assistantCreated = 2_000;
+  const partStart = 3_000;
+  const partEnd = 4_000;
+
+  const handleEvent = (event: unknown) =>
+    tracer.handleEvent({ event } as Parameters<OpenCodeSessionTracer["handleEvent"]>[0]);
+
+  await handleEvent({
+    type: "message.updated",
+    properties: {
+      sessionID,
+      info: {
+        id: userMessageID,
+        role: "user",
+        sessionID,
+        time: { created: userCreated },
+      },
+    },
+  });
+  await handleEvent({
+    type: "message.part.updated",
+    properties: {
+      sessionID,
+      part: {
+        id: "prt_user_text",
+        type: "text",
+        text: "hello",
+        messageID: userMessageID,
+        sessionID,
+      },
+      time: { receivedAt: userCreated + 1 },
+    },
+  });
+  await handleEvent({
+    type: "message.updated",
+    properties: {
+      sessionID,
+      info: {
+        id: assistantMessageID,
+        parentID: userMessageID,
+        role: "assistant",
+        sessionID,
+        time: { created: assistantCreated },
+      },
+    },
+  });
+  await handleEvent({
+    type: "message.part.updated",
+    properties: {
+      sessionID,
+      part: {
+        id: "prt_assistant_text",
+        type: "text",
+        text: "hello back",
+        messageID: assistantMessageID,
+        sessionID,
+        time: { start: partStart, end: partEnd },
+      },
+      time: partEnd,
+    },
+  });
+  await handleEvent({
+    type: "message.part.updated",
+    properties: {
+      sessionID,
+      part: {
+        id: "prt_assistant_finish",
+        type: "step-finish",
+        reason: "stop",
+        messageID: assistantMessageID,
+        sessionID,
+        tokens: {
+          total: 0,
+          input: 0,
+          output: 0,
+          reasoning: 0,
+          cache: { write: 0, read: 0 },
+        },
+        cost: 0,
+      },
+      time: partEnd + 1,
+    },
+  });
+
+  const tree = await getAssumedTreeFromCalls(callSpy.mock.calls, client);
+  expect(tree.data["opencode.session.time:0"]).toMatchObject({
+    end_time: partEnd + 1,
+  });
+  expect(tree.data["opencode.assistant.turn:1"]).toMatchObject({
+    end_time: partEnd + 1,
+  });
+});
+
 it("basic", async () => {
   const { client, callSpy } = mockClient();
 
