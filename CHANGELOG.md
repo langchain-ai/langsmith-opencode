@@ -1,5 +1,11 @@
 # @langchain/langsmith-opencode
 
+## 0.0.3
+
+### Patch Changes
+
+- [#5](https://github.com/langchain-ai/langsmith-opencode/pull/5) [`de9e69c`](https://github.com/langchain-ai/langsmith-opencode/commit/de9e69c81ce55e7aef902db570d37afa827765d0) Thanks [@dqbd](https://github.com/dqbd)! - Fix incorrect LLM turn timestamps
+
 ## 0.0.2
 
 ### Patch Changes
