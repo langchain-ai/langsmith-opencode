@@ -2,11 +2,40 @@ import type { Event, FilePart, Message, Model, Part } from "@opencode-ai/sdk";
 import { RunTree, Client, type RunTreeConfig } from "langsmith";
 import { Config } from "./config.js";
 
+type ExtraPart = Part & { receivedAt?: number };
+
 type AggregateMessage = {
   info: Message | undefined;
-  parts: Part[];
+  parts: ExtraPart[];
   complete: boolean;
   system: { model: Model; system: string[] } | undefined;
+};
+
+const extractTime = (
+  part: ExtraPart,
+): {
+  timeEnd: number | null;
+  timeStart: number | null;
+  timeReceived: number | null;
+} => {
+  const timeEnd = (() => {
+    if (!("time" in part) || part.time == null) return null;
+    if (!("end" in part.time) || typeof part.time.end !== "number") return null;
+    return part.time.end;
+  })();
+
+  const timeStart = (() => {
+    if (!("time" in part) || part.time == null) return null;
+    if (!("start" in part.time) || typeof part.time.start !== "number") return null;
+    return part.time.start;
+  })();
+
+  const timeReceived = (() => {
+    if (!("receivedAt" in part) || part.receivedAt == null) return null;
+    return part.receivedAt;
+  })();
+
+  return { timeEnd, timeStart, timeReceived };
 };
 
 type AggregateSession = {
@@ -254,9 +283,8 @@ export class OpenCodeSessionTracer {
     const parentEndTime = agentRuns
       .flatMap((run) => run.parts)
       .reduce((acc, part) => {
-        if (!("time" in part) || part.time == null) return acc;
-        if (!("end" in part.time) || typeof part.time.end !== "number") return acc;
-        return Math.max(acc, part.time.end);
+        const { timeEnd, timeStart, timeReceived } = extractTime(part);
+        return Math.max(acc, timeEnd ?? 0, timeStart ?? 0, timeReceived ?? 0);
       }, parentStartTime);
 
     if (userRun?.info) {
@@ -291,14 +319,13 @@ export class OpenCodeSessionTracer {
     for (const run of agentRuns) {
       const startTime = run.info?.time?.created ?? Date.now();
       const endTime = run.parts.reduce((acc, part) => {
-        if (!("time" in part) || part.time == null) return acc;
-        if (!("end" in part.time) || typeof part.time.end !== "number") return acc;
-        return Math.max(acc, part.time.end);
+        const { timeEnd, timeStart, timeReceived } = extractTime(part);
+        return Math.max(acc, timeEnd ?? 0, timeStart ?? 0, timeReceived ?? 0);
       }, startTime);
 
       const parts = dedupeParts(run.parts);
 
-      // Create child runs for tool parts
+      // Create child runs for LLM parts
       const child = parent.createChild({
         name: "opencode.assistant.turn",
         run_type: "llm",
@@ -415,8 +442,20 @@ export class OpenCodeSessionTracer {
 
     if (type === "message.part.updated") {
       const message = this.getMessage(sessionID, properties.part.messageID);
-
-      message.parts.push(properties.part);
+      const eventTime = (() => {
+        if (!("time" in properties)) return undefined;
+        if (typeof properties.time === "number") return properties.time;
+        if (
+          properties.time != null &&
+          typeof properties.time === "object" &&
+          "receivedAt" in properties.time &&
+          typeof properties.time.receivedAt === "number"
+        ) {
+          return properties.time.receivedAt;
+        }
+        return undefined;
+      })();
+      message.parts.push({ ...properties.part, receivedAt: eventTime ?? undefined });
       updatedID = properties.part.messageID;
     }
 
