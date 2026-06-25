@@ -146,9 +146,15 @@ it("basic", async () => {
         run_type: "chain",
         extra: {
           metadata: {
+            ls_agent_kind: "coding_agent",
+            ls_integration: "opencode",
+            ls_agent_runtime: "OpenCode",
             thread_id: expect.any(String),
-            ls_integration: "opencode-js",
-            ls_agent_type: "root",
+            ls_trace_schema_version: "coding-agent-v1",
+            ls_integration_version: expect.any(String),
+            turn_id: expect.any(String),
+            turn_number: expect.any(Number),
+            cwd: expect.any(String),
           },
         },
         inputs: {
