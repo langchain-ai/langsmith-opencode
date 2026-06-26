@@ -132,6 +132,49 @@ Captured content includes:
 
 Trace completion is based on OpenCode `step-finish` events. When OpenCode disposes the server instance, the plugin flushes pending LangSmith trace batches.
 
+## Trace Metadata Contract (`coding-agent-v1`)
+
+Every run sets a shared, versioned coding-agent metadata block on `run.extra.metadata`, so traces from any LangSmith coding-agent integration are identifiable, groupable, queryable, and attributable with the same stable keys. The block is built once on the root and propagates to child runs (langsmith ≥ 0.6.0 `createChild`).
+
+**Required on every run:**
+
+| Key                       | Value (this integration)                             |
+| ------------------------- | ---------------------------------------------------- |
+| `ls_agent_kind`           | `"coding_agent"` (fixed)                             |
+| `ls_integration`          | `"opencode"` (fixed)                                 |
+| `ls_agent_runtime`        | `"OpenCode"` (fixed)                                 |
+| `thread_id`               | root session id (sub-sessions inherit the root's id) |
+| `ls_trace_schema_version` | `"coding-agent-v1"` (fixed)                          |
+
+**Required where the runtime exposes them:**
+
+| Key                                                          | Source                                               |
+| ------------------------------------------------------------ | ---------------------------------------------------- |
+| `ls_integration_version`                                     | this plugin's `package.json` version                 |
+| `ls_agent_runtime_version`                                   | OpenCode version from the session info               |
+| `turn_id`                                                    | the turn's user message id                           |
+| `turn_number`                                                | 1-based index of the user turn within the session    |
+| `repository_url` / `repository_provider` / `repository_name` | parsed from the git `origin` remote in `cwd`         |
+| `git_branch` / `git_commit_sha`                              | git CLI, run in `cwd`                                |
+| `cwd`                                                        | session working directory (`process.cwd()` fallback) |
+
+**Contextual (emitted only where known):**
+
+| Key                | Notes                                                            |
+| ------------------ | ---------------------------------------------------------------- |
+| `local_username`   | OS username (PII-sensitive)                                      |
+| `ls_subagent_id`   | sub-session id — **subagent runs only**                          |
+| `ls_subagent_type` | sub-session agent name (e.g. `general`) — **subagent runs only** |
+
+Notes:
+
+- Unknown values are **omitted, never set to `null`** — a present-but-null key counts as a contract leak.
+- Scope-restricted keys do not propagate to runs they don't apply to. `ls_subagent_*` is stamped only on the sub-session (subagent) root after its children are created, so it never reaches the subagent's own `llm`/`tool` runs.
+- **Subagent grouping:** a subagent sub-session always carries the **root** session's `thread_id`, never its own session id, so it groups with the parent thread.
+- `approval_policy`, `user_id`, `user_email`, and `sandbox_type` are **omitted** — OpenCode's post-hoc session reconstruction exposes no per-run seam for a single approval-policy value, and no stable pseudonymous user/sandbox identifier.
+- `ls_tool_name` is emitted only when a tool run's `name` differs from the native tool name; OpenCode names tool runs with the native name, so it is normally omitted.
+- Existing model-run conventions (`ls_provider`, `ls_model_name`, `ls_invocation_params`, `usage_metadata`) are preserved unchanged.
+
 ## Troubleshooting
 
 If traces do not appear in LangSmith:
