@@ -47,6 +47,14 @@ const configSchema = z.object({
 
   // LANGSMITH_OPENCODE_RUNS_ENDPOINTS
   replicas: z.array(replicaSchema).optional(),
+
+  // LANGSMITH_OPENCODE_REDACT (default true)
+  redact: z.boolean(),
+
+  // LANGSMITH_OPENCODE_REDACT_EXTRA
+  redact_extra_rules: z
+    .array(z.object({ pattern: z.string(), replace: z.string().optional() }))
+    .optional(),
 });
 
 const fileConfigSchema = configSchema.partial();
@@ -79,6 +87,7 @@ const readConfigFile = async (filePath: string): Promise<Partial<Config>> => {
 
 const getEnvConfig = (): Partial<Config> => {
   const enabled = process.env.TRACE_TO_LANGSMITH;
+  const redact = getVar("REDACT");
 
   return fileConfigSchema.parse(
     stripUndefined({
@@ -89,6 +98,8 @@ const getEnvConfig = (): Partial<Config> => {
       parent_dotted_order: getVar("PARENT_DOTTED_ORDER"),
       metadata: tryParse(getVar("METADATA")),
       replicas: tryParse(getVar("RUNS_ENDPOINTS")),
+      redact: redact == null ? undefined : redact !== "false" && redact !== "0",
+      redact_extra_rules: tryParse(getVar("REDACT_EXTRA")),
     }),
   );
 };
@@ -106,6 +117,7 @@ export async function getConfig() {
   return configSchema.parse({
     project: "opencode",
     enabled: false,
+    redact: true,
     ...globalConfig,
     ...projectConfig,
     ...envConfig,

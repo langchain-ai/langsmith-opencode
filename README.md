@@ -58,6 +58,8 @@ The plugin accepts OpenCode-specific LangSmith variables first, then falls back 
 | `LANGSMITH_OPENCODE_PROJECT`        | No       | `opencode`            | LangSmith project name. Falls back to `LANGSMITH_PROJECT`.                                                    |
 | `LANGSMITH_OPENCODE_METADATA`       | No       | -                     | JSON object merged into root trace metadata.                                                                  |
 | `LANGSMITH_OPENCODE_RUNS_ENDPOINTS` | No       | -                     | JSON array of replica destinations.                                                                           |
+| `LANGSMITH_OPENCODE_REDACT`         | No       | `true`                | Redact detected secrets before upload. Set to `false` or `0` to disable.                                      |
+| `LANGSMITH_OPENCODE_REDACT_EXTRA`   | No       | -                     | JSON array of extra `{ pattern, replace }` redaction rules.                                                   |
 
 Example:
 
@@ -72,14 +74,16 @@ export LANGSMITH_OPENCODE_METADATA='{"team":"agents","environment":"dev"}'
 
 Use `.opencode/langsmith.json` in your project for per-project settings, or `~/.config/opencode/langsmith.json` for global defaults.
 
-| Field      | Required | Default               | Description                                                                      |
-| ---------- | -------- | --------------------- | -------------------------------------------------------------------------------- |
-| `enabled`  | Yes      | `false`               | Set to `true` to enable tracing from the config file.                            |
-| `api_key`  | No\*     | -                     | LangSmith API key. Required unless provided by environment variable or replicas. |
-| `api_url`  | No       | LangSmith SDK default | LangSmith API URL, usually `https://api.smith.langchain.com`.                    |
-| `project`  | No       | `opencode`            | LangSmith project name.                                                          |
-| `metadata` | No       | -                     | Object merged into root trace metadata.                                          |
-| `replicas` | No       | -                     | Array of additional LangSmith destinations to replicate traces to.               |
+| Field                | Required | Default               | Description                                                                      |
+| -------------------- | -------- | --------------------- | -------------------------------------------------------------------------------- |
+| `enabled`            | Yes      | `false`               | Set to `true` to enable tracing from the config file.                            |
+| `api_key`            | No\*     | -                     | LangSmith API key. Required unless provided by environment variable or replicas. |
+| `api_url`            | No       | LangSmith SDK default | LangSmith API URL, usually `https://api.smith.langchain.com`.                    |
+| `project`            | No       | `opencode`            | LangSmith project name.                                                          |
+| `metadata`           | No       | -                     | Object merged into root trace metadata.                                          |
+| `replicas`           | No       | -                     | Array of additional LangSmith destinations to replicate traces to.               |
+| `redact`             | No       | `true`                | Redact detected secrets before upload. Set to `false` to disable.                |
+| `redact_extra_rules` | No       | -                     | Array of extra `{ pattern, replace }` redaction rules.                           |
 
 ```json
 {

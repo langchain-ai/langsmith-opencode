@@ -41,7 +41,7 @@
     "prepublish": "pnpm run build"
   },
   "dependencies": {
-    "langsmith": "^0.6.0",
+    "langsmith": "^0.7.13",
     "zod": "^4.1.8"
   },
   "devDependencies": {

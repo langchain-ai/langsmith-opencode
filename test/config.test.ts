@@ -54,6 +54,8 @@ it("returns default config when no environment variables are set", async () => {
     enabled: false,
     metadata: undefined,
     replicas: undefined,
+    redact: true,
+    redact_extra_rules: undefined,
   });
 });
 
@@ -98,6 +100,8 @@ it("parses configured LangSmith values", async () => {
         updates: { tags: ["opencode"] },
       },
     ],
+    redact: true,
+    redact_extra_rules: undefined,
   });
 });
 
@@ -132,6 +136,8 @@ it("loads global config from ~/.config/opencode/langsmith.json", async () => {
         updates: { source: "global" },
       },
     ],
+    redact: true,
+    redact_extra_rules: undefined,
   });
 });
 
