@@ -1,6 +1,7 @@
 import { userInfo } from "node:os";
 import type { Event, FilePart, Message, Model, Part } from "@opencode-ai/sdk";
 import { RunTree, Client, type RunTreeConfig } from "langsmith";
+import { createSecretAnonymizer } from "langsmith/anonymizer";
 import { Config } from "./config.js";
 import { INTEGRATION_VERSION } from "./version.js";
 import { getRepoInfo } from "./repo.js";
@@ -200,8 +201,15 @@ export class OpenCodeSessionTracer {
     this.inputConfig.extra ??= {};
     this.inputConfig.extra.metadata ??= config.metadata;
 
+    const anonymizer = config.redact
+      ? createSecretAnonymizer(
+          config.redact_extra_rules ? { extraRules: config.redact_extra_rules } : undefined,
+        )
+      : undefined;
+
     this.client =
-      inputConfig?.client ?? new Client({ apiKey: config.api_key, apiUrl: config.api_url });
+      inputConfig?.client ??
+      new Client({ apiKey: config.api_key, apiUrl: config.api_url, anonymizer });
   }
 
   private getSession(sessionID: string): AggregateSession {

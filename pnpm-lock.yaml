@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       langsmith:
-        specifier: ^0.6.0
-        version: 0.6.0
+        specifier: ^0.7.13
+        version: 0.7.13
       zod:
         specifier: ^4.1.8
         version: 4.1.8
@@ -801,8 +801,8 @@ packages:
   kubernetes-types@1.30.0:
     resolution: {integrity: sha512-Dew1okvhM/SQcIa2rcgujNndZwU8VnSapDgdxlYoB84ZlpAD43U6KLAFqYo17ykSFGHNPrg0qry0bP+GJd9v7Q==}
 
-  langsmith@0.6.0:
-    resolution: {integrity: sha512-GGaj5IMRfLv2HXXFzGk9diISMYLTpSTh6fzCZGKxWYW/NqEztIFtnXLq6G/RVhzFRmCykLap1fuC67LVKoQLcg==}
+  langsmith@0.7.13:
+    resolution: {integrity: sha512-7RWGWT0dMkImPHzOHmfNfCLQY8KiJua6q2gHFDagMSpyvnHWWi4gwkn+Z/WBDbuxpykTw06SEfElAxcu8wloKA==}
     peerDependencies:
       '@opentelemetry/api': '*'
       '@opentelemetry/exporter-trace-otlp-proto': '*'
@@ -2024,7 +2024,7 @@ snapshots:
 
   kubernetes-types@1.30.0: {}
 
-  langsmith@0.6.0:
+  langsmith@0.7.13:
     dependencies:
       p-queue: 6.6.2
 
