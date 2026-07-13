@@ -146,7 +146,8 @@ it("basic", async () => {
         run_type: "chain",
         extra: {
           metadata: {
-            ls_agent_kind: "coding_agent",
+            ls_agent_purpose: "coding",
+            ls_agent_type: "root",
             ls_integration: "opencode",
             ls_agent_runtime: "OpenCode",
             thread_id: expect.any(String),
