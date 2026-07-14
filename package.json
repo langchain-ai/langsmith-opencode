@@ -1,6 +1,6 @@
 {
   "name": "@langchain/langsmith-opencode",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "description": "OpenCode plugin for tracing to LangSmith",
   "keywords": [
     "langsmith",
