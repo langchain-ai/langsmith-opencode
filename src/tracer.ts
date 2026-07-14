@@ -6,6 +6,9 @@ import { Config } from "./config.js";
 import { INTEGRATION_VERSION } from "./version.js";
 import { getRepoInfo } from "./repo.js";
 
+export const LS_AGENT_PURPOSE = "coding";
+export type LSAgentType = "root" | "subagent" | "middleware" | "compaction";
+
 type ExtraPart = Part & { receivedAt?: number };
 
 type AggregateMessage = {
@@ -283,19 +286,21 @@ export class OpenCodeSessionTracer {
     };
   }
 
-  /** Shared coding-agent-v1 root block; createChild propagates it. Unknown values omitted, never null (leak rule). */
+  /** Shared coding-agent-v1 block; createChild propagates it. Unknown values omitted, never null (leak rule). */
   private buildCodingAgentMetadata(params: {
+    agentType: LSAgentType;
     session: AggregateSession;
     threadId: string;
     turnId: string | undefined;
     turnNumber: number;
   }): Record<string, unknown> {
-    const { session, threadId, turnId, turnNumber } = params;
+    const { agentType, session, threadId, turnId, turnNumber } = params;
     const cwd = session.directory ?? process.cwd();
 
     const metadata: Record<string, unknown> = {
       // Identity & grouping — required on every run.
-      ls_agent_kind: "coding_agent",
+      ls_agent_purpose: LS_AGENT_PURPOSE,
+      ls_agent_type: agentType,
       ls_integration: "opencode",
       ls_agent_runtime: "OpenCode",
       thread_id: threadId,
@@ -366,6 +371,7 @@ export class OpenCodeSessionTracer {
     const turnNumber = (session.history ?? []).filter((h) => h.info.role === "user").length;
 
     const codingAgentMetadata = this.buildCodingAgentMetadata({
+      agentType: isSubagent ? "subagent" : "root",
       session,
       threadId,
       turnId,

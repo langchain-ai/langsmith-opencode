@@ -115,21 +115,41 @@ function validateRun(contract: Contract, md: Record<string, unknown>, runType: s
 describe("coding-agent-v1 contract", () => {
   let contract: Contract;
   let tree: Awaited<ReturnType<typeof buildTree>>;
-  let runs: Array<{ key: string; runType: string; md: Record<string, unknown> }>;
+  let runs: Array<{
+    key: string;
+    id: string;
+    parentRunId?: string;
+    runType: string;
+    md: Record<string, unknown>;
+  }>;
 
   beforeAll(async () => {
     contract = await loadContract();
     tree = await buildTree();
-    runs = Object.entries(tree.data).map(([key, run]) => ({
-      key,
-      runType: classify(run as never),
-      md: ((run as { extra?: { metadata?: Record<string, unknown> } }).extra?.metadata ??
-        {}) as Record<string, unknown>,
-    }));
+    runs = Object.entries(tree.data).map(([key, run]) => {
+      const data = run as {
+        id: string;
+        parent_run_id?: string;
+        extra?: { metadata?: Record<string, unknown> };
+      };
+      return {
+        key,
+        id: data.id,
+        parentRunId: data.parent_run_id,
+        runType: classify(run as never),
+        md: data.extra?.metadata ?? {},
+      };
+    });
   });
 
   it("opencode is a registered integration in the contract", () => {
     expect(contract.integrations).toContain(INTEGRATION_ID);
+  });
+
+  it("requires all standardized agent types", () => {
+    const spec = contract.keys.find((key) => key.key === "ls_agent_type");
+    expect(spec?.requirement).toBe("always");
+    expect(spec?.allowedValues).toEqual(["root", "subagent", "middleware", "compaction"]);
   });
 
   it("produces all four run types from the subagent session", () => {
@@ -152,7 +172,8 @@ describe("coding-agent-v1 contract", () => {
     const root = runs.find((r) => r.runType === "root");
     expect(root).toBeDefined();
     expect(root!.md).toMatchObject({
-      ls_agent_kind: "coding_agent",
+      ls_agent_purpose: "coding",
+      ls_agent_type: "root",
       ls_integration: INTEGRATION_ID,
       ls_agent_runtime: RUNTIME_NAME,
       ls_trace_schema_version: "coding-agent-v1",
@@ -169,10 +190,27 @@ describe("coding-agent-v1 contract", () => {
     expect(root!.md.ls_subagent_type).toBeUndefined();
   });
 
+  it("assigns each run the type of its owning agent", () => {
+    const byId = new Map(runs.map((run) => [run.id, run]));
+
+    for (const run of runs) {
+      let ownerType = run.runType === "subagent" ? "subagent" : "root";
+      let parent = run.parentRunId ? byId.get(run.parentRunId) : undefined;
+      while (parent) {
+        if (parent.runType === "subagent") ownerType = "subagent";
+        parent = parent.parentRunId ? byId.get(parent.parentRunId) : undefined;
+      }
+      expect(run.md.ls_agent_type, run.key).toBe(ownerType);
+      expect(run.md.ls_agent_purpose, run.key).toBe("coding");
+      expect(run.md.ls_agent_kind, run.key).toBeUndefined();
+    }
+  });
+
   it("subagent run carries ls_subagent_* and the ROOT thread_id (grouping)", () => {
     const root = runs.find((r) => r.runType === "root")!;
     const subagent = runs.find((r) => r.runType === "subagent");
     expect(subagent).toBeDefined();
+    expect(subagent!.md.ls_agent_type).toBe("subagent");
     expect(subagent!.md.ls_subagent_id).toEqual(expect.any(String));
     expect(subagent!.md.ls_subagent_type).toBe("general");
     // Grouping rule: subagent groups under the parent/root thread, never its own.
@@ -182,7 +220,8 @@ describe("coding-agent-v1 contract", () => {
 
   it("llm/tool runs inherit identity but never carry subagent identity", () => {
     for (const r of runs.filter((x) => x.runType === "llm" || x.runType === "tool")) {
-      expect(r.md.ls_agent_kind).toBe("coding_agent");
+      expect(r.md.ls_agent_purpose).toBe("coding");
+      expect(r.md.ls_agent_kind).toBeUndefined();
       expect(r.md.ls_integration).toBe(INTEGRATION_ID);
       expect(r.md.thread_id).toEqual(expect.any(String));
       expect(Object.prototype.hasOwnProperty.call(r.md, "ls_subagent_id")).toBe(false);

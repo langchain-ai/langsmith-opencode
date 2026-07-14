@@ -144,7 +144,8 @@ Every run sets a shared, versioned coding-agent metadata block on `run.extra.met
 
 | Key                       | Value (this integration)                             |
 | ------------------------- | ---------------------------------------------------- |
-| `ls_agent_kind`           | `"coding_agent"` (fixed)                             |
+| `ls_agent_purpose`        | `"coding"` (fixed)                                   |
+| `ls_agent_type`           | `"root"` or `"subagent"` based on owning session     |
 | `ls_integration`          | `"opencode"` (fixed)                                 |
 | `ls_agent_runtime`        | `"OpenCode"` (fixed)                                 |
 | `thread_id`               | root session id (sub-sessions inherit the root's id) |
