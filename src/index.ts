@@ -1,46 +1,28 @@
-import type { Plugin } from "@opencode-ai/plugin";
-import { OpenCodeSessionTracer } from "./tracer.js";
-import { getConfig } from "./config.js";
+import type { Plugin as PluginV1 } from "@opencode-ai/plugin";
+// `@opencode/plugin` exposes its types through a namespace export, so the
+// definition interface is `Plugin.Plugin`.
+import type { Plugin as PluginV2 } from "@opencode/plugin";
+import { createV1Plugin } from "./v1.js";
+import { setup } from "./v2.js";
 
-export const LangSmithPlugin: Plugin = async (ctx) => {
-  const config = await getConfig();
-  const tracer = new OpenCodeSessionTracer(config);
-
-  // If tracing is disabled, return an empty object
-  if (!config.enabled) return {};
-
-  async function getSessionHistory(sessionID: string) {
-    const past = await ctx.client.session.messages({
-      path: { id: sessionID },
-    });
-    if (past.error) throw past.error;
-    return past.data;
-  }
-
-  return {
-    "experimental.chat.system.transform": async (input, output) => {
-      const sessionID = input.sessionID;
-      if (!sessionID) return;
-
-      await tracer.handleSessionLoad(sessionID, getSessionHistory);
-      await tracer.handleSystem(input, output);
-    },
-    event: async (input) => {
-      const sessionID =
-        "sessionID" in input.event.properties &&
-        typeof input.event.properties.sessionID === "string"
-          ? input.event.properties.sessionID
-          : undefined;
-
-      if (!sessionID) return;
-
-      await tracer.handleSessionLoad(sessionID, getSessionHistory);
-      await tracer.handleEvent(input);
-
-      // Flush the tracer when the session is idle
-      if (input.event.type === "session.idle") {
-        await tracer.flush();
-      }
-    },
-  };
+/** OpenCode 2 reads `id` and `setup` off the module's default export. */
+const definition: PluginV2.Plugin = {
+  id: "langsmith",
+  setup,
 };
+
+/**
+ * OpenCode 1 calls `server()` with the plugin context and uses the returned
+ * hooks; OpenCode 2 ignores it. Spreading keeps the object assignable to both
+ * entrypoint shapes while each version only touches its own key.
+ */
+export default {
+  ...definition,
+  server: createV1Plugin,
+};
+
+/**
+ * Legacy function export, kept for OpenCode 1 releases older than 1.18.29 that
+ * discover plugins by scanning named function exports.
+ */
+export const LangSmithPlugin: PluginV1 = createV1Plugin;

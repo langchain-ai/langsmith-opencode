@@ -32,6 +32,17 @@ export TRACE_TO_LANGSMITH="true"
 
 Then run OpenCode as usual. Completed turns will appear in the configured LangSmith project.
 
+### OpenCode versions
+
+The plugin supports OpenCode 1 and OpenCode 2 from the same package.
+
+- **OpenCode 2** loads the default export's `setup()` and reads completed sessions from the session API when a session goes idle.
+- **OpenCode 1** loads the `server()` entrypoint and consumes the `chat` and `event` hooks.
+
+OpenCode 2 no longer emits the `message.updated` / `message.part.updated` events the OpenCode 1 plugin consumes, so each version is traced by its own code path. Both produce the same `opencode.session` / `opencode.assistant.turn` run tree and the same `coding-agent-v1` metadata contract.
+
+OpenCode 1 support requires OpenCode 1.18.29 or newer, the first release that accepts the shared object entrypoint. The package also keeps its original function export for OpenCode 1 releases that discover plugins through named function exports.
+
 ### LangSmith API keys
 
 To create an API key:
