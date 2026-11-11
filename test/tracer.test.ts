@@ -1,21 +1,9 @@
 /* eslint-disable import/no-extraneous-dependencies */
 import { OpenCodeSessionTracer } from "../src/tracer.js";
-import * as fs from "node:fs/promises";
-import * as path from "node:path";
-import { fileURLToPath } from "node:url";
 import { it, expect } from "vitest";
 import { mockClient } from "./utils/mock_client.ts";
 import { getAssumedTreeFromCalls } from "./utils/tree.ts";
-
-async function loadJSONL(fileName: string) {
-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const data = await fs.readFile(path.join(__dirname, "snapshot", fileName), "utf8");
-  const lines = data
-    .split("\n")
-    .filter((line) => line.trim())
-    .map((line) => JSON.parse(line));
-  return lines;
-}
+import { loadJSONL } from "./utils/snapshot.ts";
 
 it("uses receivedAt event timestamps for run end times", async () => {
   const { client, callSpy } = mockClient();
