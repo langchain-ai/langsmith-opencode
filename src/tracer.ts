@@ -5,6 +5,7 @@ import { createSecretAnonymizer } from "langsmith/anonymizer";
 import { Config } from "./config.js";
 import { INTEGRATION_VERSION } from "./version.js";
 import { getRepoInfo } from "./repo.js";
+import { LLM_ONLY_METADATA } from "./constants.js";
 import type { SystemPromptModel } from "./models.js";
 
 export const LS_AGENT_PURPOSE = "coding";
@@ -393,6 +394,7 @@ export class OpenCodeSessionTracer {
         metadata: {
           ...this.inputConfig.extra?.metadata,
           ...codingAgentMetadata,
+          ...LLM_ONLY_METADATA,
         },
       },
       client: this.client,
@@ -461,7 +463,7 @@ export class OpenCodeSessionTracer {
           start_time: state.time?.start ?? startTime,
           end_time: state.time?.end ?? endTime,
           error: state.error,
-          extra: { metadata: state.metadata },
+          extra: { metadata: { ...state.metadata, ...LLM_ONLY_METADATA } },
         });
 
         session.postRunQueue.push(tool.postRun());
