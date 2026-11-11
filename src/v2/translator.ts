@@ -1,8 +1,22 @@
 import type { Event, Part, ToolPart } from "@opencode-ai/sdk";
 import { OpenCodeSessionTracer } from "../tracer.js";
 import { convertV2History } from "./history.js";
-import { LOG_PREFIX } from "./constants.js";
-import type { V2Context, V2Event, V2EventOf, V2SessionContext, V2SessionsByID } from "../models.js";
+import {
+  AUTO_COMPACTION,
+  CONTINUED_REASON,
+  EMPTY_MODEL,
+  EMPTY_TOKENS,
+  LOG_PREFIX,
+  STOP_REASON,
+} from "./constants.js";
+import type {
+  V2Context,
+  V2Event,
+  V2EventOf,
+  V2HeldStep,
+  V2SessionContext,
+  V2SessionsByID,
+} from "../models.js";
 import * as v1 from "./parts.js";
 
 export class OpenCodeV2EventTranslator {
@@ -21,6 +35,7 @@ export class OpenCodeV2EventTranslator {
       parentID: undefined,
       queuedUserMessages: {},
       userMessageID: undefined,
+      heldStep: undefined,
       pendingSystem: undefined,
       historyLoaded: false,
       tools: {},
@@ -100,6 +115,13 @@ export class OpenCodeV2EventTranslator {
         return this.onToolEnded(event);
       case "session.step.ended":
         return this.onStepEnded(event);
+      case "session.step.failed":
+        return this.onStepFailed(event);
+      case "session.compaction.started":
+        return this.onCompactionStarted(event);
+      case "session.compaction.ended":
+      case "session.compaction.failed":
+        return this.onCompactionEnded(event);
       case "session.execution.succeeded":
       case "session.execution.failed":
       case "session.execution.interrupted":
@@ -128,6 +150,7 @@ export class OpenCodeV2EventTranslator {
     delete session.queuedUserMessages[inboxID];
     const { item, created } = queued;
     if (!session.announced) await this.announceSession(sessionID, undefined);
+    await this.finishHeldStep(sessionID, STOP_REASON);
     session.userMessageID = inboxID;
 
     await this.emit(sessionID, {
@@ -150,16 +173,35 @@ export class OpenCodeV2EventTranslator {
   }
 
   private async onExecutionEnded(sessionID: string) {
+    await this.finishHeldStep(sessionID, STOP_REASON);
     if (this.getSession(sessionID).parentID === undefined) await this.tracer.flush();
+  }
+
+  private async holdStep(sessionID: string, step: V2HeldStep) {
+    await this.finishHeldStep(sessionID, CONTINUED_REASON);
+    this.getSession(sessionID).heldStep = step;
+  }
+
+  public async finishHeldSteps() {
+    for (const sessionID of Object.keys(this.sessions)) {
+      await this.finishHeldStep(sessionID, STOP_REASON);
+    }
+  }
+
+  private async finishHeldStep(sessionID: string, reason: string) {
+    const session = this.getSession(sessionID);
+    const held = session.heldStep;
+    if (!held) return;
+    session.heldStep = undefined;
+    const part = v1.stepFinishPart(sessionID, held.messageID, reason, held.cost, held.tokens);
+    await this.emitPart(part, held.time);
   }
 
   private async onStepStarted(event: V2EventOf<"session.step.started">) {
     const { sessionID, assistantMessageID, model, started } = event.data;
     const session = this.getSession(sessionID);
-    if (session.pendingSystem) {
-      const { model: systemModel, system } = session.pendingSystem;
-      await this.tracer.handleSystem({ model: systemModel, sessionID }, { system });
-    }
+    await this.finishHeldStep(sessionID, CONTINUED_REASON);
+    await this.applyPendingSystem(sessionID);
 
     const info = v1.assistantMessage({
       id: assistantMessageID,
@@ -234,18 +276,75 @@ export class OpenCodeV2EventTranslator {
 
   private async onStepEnded(event: V2EventOf<"session.step.ended">) {
     const { sessionID, assistantMessageID, finish, cost, tokens } = event.data;
-    await this.emitPart(
-      {
-        id: v1.partID(assistantMessageID, "step-finish"),
-        sessionID,
+    if (finish === STOP_REASON) {
+      return this.holdStep(sessionID, {
         messageID: assistantMessageID,
-        type: "step-finish",
-        reason: finish,
         cost,
         tokens,
-      },
+        time: event.created,
+      });
+    }
+    const part = v1.stepFinishPart(sessionID, assistantMessageID, finish, cost, tokens);
+    await this.emitPart(part, event.created);
+  }
+
+  private async onStepFailed(event: V2EventOf<"session.step.failed">) {
+    const { sessionID, assistantMessageID } = event.data;
+    await this.holdStep(sessionID, {
+      messageID: assistantMessageID,
+      cost: 0,
+      tokens: EMPTY_TOKENS,
+      time: event.created,
+    });
+  }
+
+  private async applyPendingSystem(sessionID: string) {
+    const pending = this.getSession(sessionID).pendingSystem;
+    if (!pending) return;
+    await this.tracer.handleSystem({ model: pending.model, sessionID }, { system: pending.system });
+  }
+
+  private async onCompactionStarted(event: V2EventOf<"session.compaction.started">) {
+    const { sessionID, inputID, reason } = event.data;
+    const session = this.getSession(sessionID);
+    const id = inputID ?? session.userMessageID ?? `${sessionID}:compaction:${event.created}`;
+    if (id !== session.userMessageID) {
+      if (!session.announced) await this.announceSession(sessionID, undefined);
+      session.userMessageID = id;
+      const info = v1.userMessage(id, sessionID, event.created, session.agent);
+      await this.emit(sessionID, { type: "message.updated", properties: { info } });
+    }
+    await this.emitPart(
+      v1.compactionPart(sessionID, id, event.created, reason === AUTO_COMPACTION),
       event.created,
     );
+  }
+
+  private async onCompactionEnded(
+    event: V2EventOf<"session.compaction.ended" | "session.compaction.failed">,
+  ) {
+    const { sessionID, cost, tokens } = event.data;
+    await this.applyPendingSystem(sessionID);
+    const parentID = this.getSession(sessionID).userMessageID ?? "";
+    const id = `${parentID}:summary:${event.created}`;
+    const info = v1.assistantMessage({
+      id,
+      sessionID,
+      created: event.created,
+      parentID,
+      model: EMPTY_MODEL,
+    });
+    await this.emit(sessionID, { type: "message.updated", properties: { info } });
+    if (event.type === "session.compaction.ended") {
+      const summary = v1.textPart(sessionID, id, "text", 0, event.data.text, event.created);
+      await this.emitPart(summary, event.created);
+    }
+    await this.holdStep(sessionID, {
+      messageID: id,
+      cost: cost ?? 0,
+      tokens: tokens ?? EMPTY_TOKENS,
+      time: event.created,
+    });
   }
 }
 
@@ -255,11 +354,14 @@ export async function startV2Tracing(context: V2Context, tracer: OpenCodeSession
     context.app.version,
     context.location.directory,
   );
-  const contextHook = await context.session.hook("context", (request) =>
+  const readRequest = (request: V2SessionContext) =>
     translator.handleContext(request).catch((error: unknown) => {
       console.warn(`${LOG_PREFIX} could not read the model request:`, error);
-    }),
-  );
+    });
+  const hooks = await Promise.all([
+    context.session.hook("context", readRequest),
+    context.session.hook("compaction", readRequest),
+  ]);
 
   const controller = new AbortController();
   void (async () => {
@@ -276,7 +378,8 @@ export async function startV2Tracing(context: V2Context, tracer: OpenCodeSession
 
   return async () => {
     controller.abort();
-    await contextHook.dispose();
+    await Promise.all(hooks.map((hook) => hook.dispose()));
+    await translator.finishHeldSteps();
     await tracer.flush();
   };
 }

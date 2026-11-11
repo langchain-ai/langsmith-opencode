@@ -49,6 +49,7 @@ export type V2SessionState = {
   parentID: string | undefined;
   queuedUserMessages: { [inboxID: string]: { item: V2UserItem; created: number } };
   userMessageID: string | undefined;
+  heldStep: V2HeldStep | undefined;
   pendingSystem: { model: SystemPromptModel; system: string[] } | undefined;
   historyLoaded: boolean;
   tools: { [callID: string]: { name: string; input: Record<string, unknown>; start: number } };
@@ -59,5 +60,9 @@ export type V2SessionsByID = { [sessionID: string]: V2SessionState };
 export type V2ToolPartsByCallID = { [callID: string]: ToolPart };
 
 export type V2TextKind = "text" | "reasoning";
+
+export type V2Tokens = V2EventOf<"session.step.ended">["data"]["tokens"];
+
+export type V2HeldStep = { messageID: string; cost: number; tokens: V2Tokens; time: number };
 
 export type DualVersionPlugin = Plugin.Plugin & { server: V1Plugin };

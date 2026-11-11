@@ -444,6 +444,7 @@ export class OpenCodeSessionTracer {
               parentRunTree: child,
               rootThreadId: threadId,
             });
+            trace.state = true;
             toolHandled = true;
           }
         }

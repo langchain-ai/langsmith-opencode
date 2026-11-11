@@ -18,7 +18,7 @@ export async function traceV2Recording(lines: V2RecordingLine[]) {
       translator = new OpenCodeV2EventTranslator(tracer, version, directory);
     }
     if (kind === "event") await translator?.handleEvent(payload as V2Event);
-    if (kind === "session.hook.context")
+    if (kind === "session.hook.context" || kind === "session.hook.compaction")
       await translator?.handleContext(payload as V2SessionContext);
   }
   await tracer?.flush();
@@ -41,7 +41,7 @@ export async function traceV2Events(sessionEvents: V2SessionEventInput[]) {
   return getAssumedTreeFromCalls(callSpy.mock.calls, client);
 }
 
-const MODEL = { id: "claude-haiku-4-5", providerID: "anthropic" };
+export const MODEL = { id: "claude-haiku-4-5", providerID: "anthropic" };
 
 export const STOPPED = { finish: "stop", cost: 0, tokens: EMPTY_TOKENS };
 
@@ -74,7 +74,7 @@ export const textStep = (sessionID: string, assistantMessageID: string, text: st
   ];
 };
 
-export const executionEnded = (sessionID: string) => ({
-  type: "session.execution.succeeded",
+export const executionEnded = (sessionID: string, type = "session.execution.succeeded") => ({
+  type,
   data: { sessionID },
 });

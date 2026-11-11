@@ -1,6 +1,13 @@
 import type { Part } from "@opencode-ai/sdk";
+import { EMPTY_MODEL } from "./constants.js";
 import type { V2ContextMessage, V2HistoryEntry, V2ToolPartsByCallID } from "../models.js";
-import { assistantMessage, textPart, toolResultText, userMessage } from "./parts.js";
+import {
+  assistantMessage,
+  isTypedUserMessage,
+  textPart,
+  toolResultText,
+  userMessage,
+} from "./parts.js";
 
 export function convertV2History(
   sessionID: string,
@@ -14,7 +21,7 @@ export function convertV2History(
     const messageID = "id" in message && message.id ? message.id : `${sessionID}:history:${index}`;
     const content = typeof message.content === "string" ? [] : message.content;
 
-    if (message.role === "user") {
+    if (isTypedUserMessage(message)) {
       const parts = content.flatMap((item, partIndex) =>
         item.type === "text"
           ? [textPart(sessionID, messageID, "text", partIndex, item.text, 0)]
@@ -49,7 +56,7 @@ export function convertV2History(
         sessionID,
         created: 0,
         parentID: "",
-        model: { id: "", providerID: "" },
+        model: EMPTY_MODEL,
       });
       history.push({ info, parts });
     }

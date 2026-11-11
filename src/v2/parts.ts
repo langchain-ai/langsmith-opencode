@@ -2,10 +2,12 @@ import type { AssistantMessage, FilePart, Part, UserMessage } from "@opencode-ai
 import { EMPTY_TOKENS } from "./constants.js";
 import type {
   V2AssistantMessageParams,
+  V2ContextMessage,
   V2FileRef,
   V2TextKind,
   V2ToolContent,
   V2ToolResult,
+  V2Tokens,
 } from "../models.js";
 
 export const partID = (messageID: string, kind: string, index = 0) =>
@@ -96,3 +98,35 @@ export const toolMetadata = (metadata: Record<string, unknown> | undefined) =>
   typeof metadata?.sessionID === "string"
     ? { ...metadata, sessionId: metadata.sessionID }
     : (metadata ?? {});
+
+export const stepFinishPart = (
+  sessionID: string,
+  messageID: string,
+  reason: string,
+  cost: number,
+  tokens: V2Tokens,
+): Part => ({
+  id: partID(messageID, "step-finish"),
+  sessionID,
+  messageID,
+  type: "step-finish",
+  reason,
+  cost,
+  tokens,
+});
+
+export const compactionPart = (
+  sessionID: string,
+  messageID: string,
+  index: number,
+  auto: boolean,
+): Part => ({
+  id: partID(messageID, "compaction", index),
+  sessionID,
+  messageID,
+  type: "compaction",
+  auto,
+});
+
+export const isTypedUserMessage = (message: V2ContextMessage) =>
+  message.role === "user" && "id" in message && Boolean(message.id);
