@@ -230,6 +230,21 @@ describe("coding-agent-v1 contract", () => {
     }
   });
 
+  it("non-llm runs never carry model or usage metadata", () => {
+    const modelKeys = [
+      "usage_metadata",
+      "ls_model_name",
+      "ls_provider",
+      "ls_model_type",
+      "ls_invocation_params",
+    ];
+    for (const r of runs.filter((x) => x.runType !== "llm")) {
+      for (const key of modelKeys) {
+        expect(Object.prototype.hasOwnProperty.call(r.md, key), `${r.key} ${key}`).toBe(false);
+      }
+    }
+  });
+
   it("llm runs preserve the existing model conventions", () => {
     for (const r of runs.filter((x) => x.runType === "llm")) {
       expect(r.md.ls_model_name).toEqual(expect.any(String));
