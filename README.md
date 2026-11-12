@@ -14,7 +14,17 @@ Trace [OpenCode](https://opencode.ai/) sessions to [LangSmith](https://smith.lan
 
 ## Quick Start
 
-Add the plugin to your OpenCode configuration file. You can configure it locally in `opencode.json` or globally in `~/.config/opencode/opencode.json`:
+Add the plugin to your OpenCode configuration file. You can configure it locally in `opencode.json` or globally in `~/.config/opencode/opencode.json`.
+
+On OpenCode v2:
+
+```json
+{
+  "plugins": [{ "package": "@langchain/langsmith-opencode" }]
+}
+```
+
+On OpenCode v1, which needs version 1.3.4 or newer:
 
 ```json
 {
@@ -22,10 +32,6 @@ Add the plugin to your OpenCode configuration file. You can configure it locally
   "plugins": ["@langchain/langsmith-opencode"]
 }
 ```
-
-On OpenCode v2, list it as `"plugins": [{ "package": "@langchain/langsmith-opencode" }]` instead.
-
-On OpenCode v1, the plugin needs version 1.3.4 or newer.
 
 Set your LangSmith credentials before starting OpenCode:
 
