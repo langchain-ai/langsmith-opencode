@@ -1,10 +1,11 @@
 import { userInfo } from "node:os";
-import type { Event, FilePart, Message, Model, Part } from "@opencode-ai/sdk";
+import type { Event, FilePart, Message, Part } from "@opencode-ai/sdk";
 import { RunTree, Client, type RunTreeConfig } from "langsmith";
 import { createSecretAnonymizer } from "langsmith/anonymizer";
 import { Config } from "./config.js";
 import { INTEGRATION_VERSION } from "./version.js";
 import { getRepoInfo } from "./repo.js";
+import type { SystemPromptModel } from "./models.js";
 
 export const LS_AGENT_PURPOSE = "coding";
 export type LSAgentType = "root" | "subagent" | "middleware" | "compaction";
@@ -15,7 +16,7 @@ type AggregateMessage = {
   info: Message | undefined;
   parts: ExtraPart[];
   complete: boolean;
-  system: { model: Model; system: string[] } | undefined;
+  system: { model: SystemPromptModel; system: string[] } | undefined;
 };
 
 const extractTime = (
@@ -54,7 +55,7 @@ type AggregateSession = {
     };
   };
   history: { info: Message; parts: Part[] }[] | undefined;
-  pendingSystem: { model: Model; system: string[] } | undefined;
+  pendingSystem: { model: SystemPromptModel; system: string[] } | undefined;
   postRunQueue: Promise<void>[];
   parentID: string | undefined;
   // OpenCode runtime version + working directory, captured from session events.
@@ -491,7 +492,7 @@ export class OpenCodeSessionTracer {
   }
 
   public async handleSystem(
-    input: { model: Model; sessionID?: string | undefined },
+    input: { model: SystemPromptModel; sessionID?: string | undefined },
     output: { system: string[] },
   ) {
     if (!input.sessionID) return;

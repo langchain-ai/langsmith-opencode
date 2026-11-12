@@ -23,6 +23,10 @@ Add the plugin to your OpenCode configuration file. You can configure it locally
 }
 ```
 
+On OpenCode v2, list it as `"plugins": [{ "package": "@langchain/langsmith-opencode" }]` instead.
+
+On OpenCode v1, the plugin needs version 1.3.4 or newer.
+
 Set your LangSmith credentials before starting OpenCode:
 
 ```shell

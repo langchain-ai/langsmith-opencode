@@ -106,11 +106,11 @@ const getEnvConfig = (): Partial<Config> => {
 
 export type Config = z.infer<typeof configSchema>;
 
-export async function getConfig() {
+export async function getConfig(directory = process.cwd()) {
   const home = getHomeDir();
   const [globalConfig, projectConfig] = await Promise.all([
     readConfigFile(join(home, ".config", "opencode", "langsmith.json")),
-    readConfigFile(join(process.cwd(), ".opencode", "langsmith.json")),
+    readConfigFile(join(directory, ".opencode", "langsmith.json")),
   ]);
   const envConfig = getEnvConfig();
 
