@@ -1,5 +1,13 @@
 # @langchain/langsmith-opencode
 
+## 0.2.0
+
+### Minor Changes
+
+- [#19](https://github.com/langchain-ai/langsmith-opencode/pull/19) [`6634cc1`](https://github.com/langchain-ai/langsmith-opencode/commit/6634cc1dc36a2b44032c33f366292a1ddcd2b145) Thanks [@ejaimez14](https://github.com/ejaimez14)! - Supports OpenCode v2
+
+  Also fixes two things for v1 users, since they share the same tracer: tool and subagent runs no longer get charged their parent model call's tokens, and a subagent's work is only nested once even when more than one tool call points at it.
+
 ## 0.1.0
 
 ### Minor Changes
